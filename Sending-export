@@ -1,0 +1,1 @@
+/tool e-mail send to="{your@email}" body="See attached file for System Export" subject=([/system identity get name] ." ". [/system clock get time] ." ". [/system clock get date]. " export") file=weekly-export.rsc
