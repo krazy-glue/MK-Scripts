@@ -1,0 +1,1 @@
+/tool e-mail send to="{your@email}" body="See attached file for System Backup" subject=([/system identity get name] ." ". [/system clock get time] ." ". [/system clock get date]. " Backup") file=email_backup.backup
