@@ -1,5 +1,3 @@
-
-
 :local resolvedIP [:resolve "{DDNS domain to be resolved}"];
 :local mangleinID [/ip firewall mangle find comment="{comment for Mangle to modify}"];
 :local mangleoutID [/ip firewall mangle find comment="{comment for Mangle to modify}"];
