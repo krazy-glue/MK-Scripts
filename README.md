@@ -1,2 +1,1 @@
-# MK-DDNS_Scripts
-
+# MK-Scripts
