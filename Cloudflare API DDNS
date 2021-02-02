@@ -1,0 +1,86 @@
+################# CloudFlare variables #################
+:global WANInterface "[Mikrotik WAN interface]";
+
+:local CFemail "[Cloudflare account email]";
+:local CFtkn "[Cloudflare Created API token]"; # Your CloudFlare API key comes here
+
+:local CFrecordType "A";
+
+:local CFzoneid "[Cloudflare zoneID]"; # Your DNS zone ID comes here (a hash of 32 chars)
+
+# your domains on the same zone ID you want ot update
+:local CFproxiedDomain "[Cloudflare Domain entry]";
+# You'll need to have at least one domain that's proxied=false, otherwise resolve will keep getting CF's proxy IP instead of yours
+:local CFunproxiedDomain "[Cloudflare Domain entry 2]"; 
+
+
+# An associative array of domain names to domainIds (32 chars each, you'll need to query CF to get them)
+:local CFdomains { "$CFproxiedDomain"="[Cloudflare entry ID]"; \
+                   "$CFunproxiedDomain"="[second Cloudflare entry ID]" };
+
+# An associative array of domain names to whether you want to enable CF proxying or not
+:local CFproxied { "$CFproxiedDomain"="true"; \
+                   "$CFunproxiedDomain"="false" };
+
+
+
+#########################################################################
+########################  DO NOT EDIT BELOW  ############################
+#########################################################################
+
+
+################# Internal variables #################
+:local resolvedIP "";
+:global WANip "";
+:local previousIP "";
+################# Build CF API Url (v4) #################
+:local CFurl "https://api.cloudflare.com/client/v4/zones/"
+:set CFurl ($CFurl . "$CFzoneid/dns_records/$CFid");
+ 
+ 
+################# Get or set previous IP-variables #################
+:local currentIP [/ip address get [/ip address find interface=$WANInterface ] address];
+:set WANip [:pick $currentIP 0 [:find $currentIP "/"]];
+
+:if ([/file find name=ddns.tmp.txt] = "") do={
+    :log error "No previous ip address file found, createing..."
+    :set previousIP $WANip;
+    :execute script=":put $WANip" file="ddns.tmp";
+    :log info ("CF: Updating CF, setting $CFDomain = $WANip")
+    /tool fetch http-method=put mode=https output=none url="$CFurl" http-header-field="X-Auth-Email:$CFemail,Authorization: Bearer $CFtkn,content-type:application/json" http-data="{\"type\":\"$CFrecordType\",\"name\":\"$CFdomain\",\"ttl\":$CFrecordTTL,\"content\":\"$WANip\"}"
+    :error message="No previous ip address file found."
+} else={
+    :if ( [/file get [/file find name=ddns.tmp.txt] size] > 0 ) do={ 
+    :global content [/file get [/file find name="ddns.tmp.txt"] contents] ;
+    :global contentLen [ :len $content ] ;  
+    :global lineEnd 0;
+    :global line "";
+    :global lastEnd 0;   
+            :set lineEnd [:find $content "\n" $lastEnd ] ;
+            :set line [:pick $content $lastEnd $lineEnd] ;
+            :set lastEnd ( $lineEnd + 1 ) ;   
+            :if ( [:pick $line 0 1] != "#" ) do={   
+                #:local previousIP [:pick $line 0 $lineEnd ]
+                :set previousIP [:pick $line 0 $lineEnd ];
+                :set previousIP [:pick $previousIP 0 [:find $previousIP "\r"]];
+            }
+    }
+}
+
+ 
+######## Compare and update CF if necessary #####
+:if ($previousIP != $WANip) do={
+  :log info "cloudflare: $CFunproxiedDomain $resolvedIP => $WANip";
+  :foreach domainName,domainId in=$CFdomains do={
+    :local proxied ($CFproxied->$domainName);
+    :local url "https://api.cloudflare.com/client/v4/zones/$CFzoneid/dns_records/$domainId";
+    :local header "X-Auth-Email:$CFemail,Authorization: Bearer $CFtkn,content-type:application/json";
+    :local data "{\"type\":\"$CFrecordType\",\"name\":\"$domainName\",\"content\":\"$WANip\",\"proxied\":$proxied}";
+    :local result [ /tool fetch http-method=put mode=https url=$url http-header-field=$header http-data=$data output=user as-value ];
+    :if ([len $result] > 1) do={
+      :log info "cloudflare: domain $CFproxiedDomain updated";
+    }
+  };
+} else={
+  :log info "cloudflare: no update needed for $CFproxiedDomain"
+};
