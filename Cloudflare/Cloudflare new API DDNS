@@ -1,0 +1,75 @@
+#########################################################################
+#         ==================================================            #
+#         $ Mikrotik RouterOS update script for CloudFlare $            #
+#         ==================================================            #
+#                                                                       #
+# - You need a CloudFlare account & api key (look under settings),      #
+#   a zone and A record in it                                           #
+# - All variables in first section are obvious, except CFid,            #
+#   To obtain CFzoneid use following command in any unix shell:         #
+#    curl -X GET "https://api.cloudflare.com/client/v4/accounts" -H "X-Auth-Email: YOUR_EMAIL" -H "X-Auth-Key: YOUR_API_KEY" -H "Content-Type: application/json" | python -mjson.tool 
+#   To obtain CFid use following command in any unix shell:             #
+#    curl -X GET "https://api.cloudflare.com/client/v4/zones/CLOUDFLARE_ZONE_ID/dns_records?type=A" -H "X-Auth-Email:"CF ACCOUNT EMAIL" -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" | python -mjson.tool
+# - Enable CFDebug if needed - it'll print some info to logs            #
+# - Put script under /system scripts giving "read" policy access.       #
+#   For 6.29 and older "test" policy is also needed.                    #
+# - Add script to /system scheduler using it's name in "on-event"       #
+# - Requires at least RouterOS 6.44beta75 for multiple header support   #
+#                                                                       #
+#              Credits for Samuel Tegenfeldt, CC BY-SA 3.0              #
+#                        Modified by kiler129                           #
+#                        Modified by viritt                             #
+#########################################################################
+
+################# CloudFlare variables #################
+:local CFDebug "true"
+:global WANInterface "MIKROTIK_WAN_INTERFACE"  
+
+:local CFdomain "DOMAIN YOU WANT TO UPDATE"
+:local CFzone "CNAME POINT TO DOMAIN AND IS UNPROXIED"
+
+:local CFemail "CLOUDFLARE ACCOUNT EMAIL"
+:local CFtkn "CLOUDFLARE API TOKEN, SHOULD BE A CREATED ONE WITH DNS WRITE RIGHTS"
+
+:local CFzoneid "CLOUDFLARE ID OF YOUR ZONE CAN BE FETCH FROM WEBSITE"
+:local CFid "CLOUDFLARE ID OF YOUR "A" ENTRY"
+
+#########################################################################
+########################  DO NOT EDIT BELOW  ############################
+#########################################################################
+
+
+
+################# Internal variables #################
+:local resolvedIP ""
+:global WANip ""
+:local CFrecordType "A"
+ 
+################# Resolve and set IP-variables #################
+:local currentIP [/ip address get [/ip address find interface=$WANInterface ] address];
+:set WANip [:pick $currentIP 0 [:find $currentIP "/"]];
+:set resolvedIP [:resolve $CFzone];
+ 
+################# Build CF API Url (v4) #################
+:local CFurl "https://api.cloudflare.com/client/v4/zones/"
+:set CFurl ($CFurl . "$CFzoneid/dns_records/$CFid");
+
+######## Write debug info to log #################
+:if ($CFDebug = "true") do={
+ :log info ("CF: hostname = $CFdomain")
+ :log info ("CF: resolvedIP = $resolvedIP")
+ :log info ("CF: currentIP = $currentIP")
+ :log info ("CF: WANip = $WANip")
+ :log info ("CF: CFurl = $CFurl&content=$WANip")
+};
+ 
+######## Compare and update CF if necessary #####
+:if ($resolvedIP != $WANip) do={
+ :log info ("CF: Updating CF, setting $CFDomain = $WANip")
+  :local header "X-Auth-Email:$CFemail,Authorization: Bearer $CFtkn,content-type:application/json";
+  :local data "{\"type\":\"$CFrecordType\",\"name\":\"$CFdomain\",\"content\":\"$WANip\",\"ttl\":1,\"proxied\":true}"
+  :local result [/tool fetch http-method=put mode=https url=$CFurl http-header-field=$header http-data=$data output=user as-value ];
+ /ip dns cache flush
+} else={
+ :log info "CF: No Update Needed!"
+}
