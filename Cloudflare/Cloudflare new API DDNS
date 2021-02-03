@@ -65,11 +65,11 @@
  
 ######## Compare and update CF if necessary #####
 :if ($resolvedIP != $WANip) do={
- :log info ("CF: Updating CF, setting $CFDomain = $WANip")
+ :log warning ("CF: Updating CF, setting $CFDomain = $WANip")
   :local header "X-Auth-Email:$CFemail,Authorization: Bearer $CFtkn,content-type:application/json";
   :local data "{\"type\":\"$CFrecordType\",\"name\":\"$CFdomain\",\"content\":\"$WANip\",\"ttl\":1,\"proxied\":true}"
   :local result [/tool fetch http-method=put mode=https url=$CFurl http-header-field=$header http-data=$data output=user as-value ];
  /ip dns cache flush
 } else={
- :log info "CF: No Update Needed!"
+ :log info "CF: No Update Needed for $CFdomain!"
 }
