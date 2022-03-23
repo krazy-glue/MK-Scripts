@@ -22,7 +22,7 @@
 
 :log warning "$user (srcIp=$callerID, dstIp=$calledID) connected: was given $remoteAddr IP (GW $localAddr) and assigned to $interfaceName interface AT: $systemdate $systemtime"
 
-:foreach i in [/ppp secret find comment="ALLACCESS"] do={
+:foreach i in [:ppp secret find comment="ALLACCESS"] do={
     :set ACCESSUSER [:ppp secret get number=$i name]
     :log debug "Accessuser $ACCESSUSER"
     :if ($user = $ACCESSUSER) do={
