@@ -9,38 +9,38 @@
 :local interfaceName
 :local ACCESS
 :local ACCESSUSER
-:local systemtime [:system clock get time]
-:local systemdate [:system clock get date]
+:local systemtime [/system clock get time];
+:local systemdate [/system clock get date];
 
-:set localAddr $"local-address"
-:set remoteAddr $"remote-address"
-:set callerID $"caller-id"
-:set calledID $"called-id"
-:set interfaceName [:interface get $interface name]
-:set ACCESS "false"
+:set localAddr $"local-address";
+:set remoteAddr $"remote-address";
+:set callerID $"caller-id";
+:set calledID $"called-id";
+:set interfaceName [/interface get $interface name];
+:set ACCESS "false";
 
 
-:log warning "$user (srcIp=$callerID, dstIp=$calledID) connected: was given $remoteAddr IP (GW $localAddr) and assigned to $interfaceName interface AT: $systemdate $systemtime"
+:log warning "$user (srcIp=$callerID, dstIp=$calledID) connected: was given $remoteAddr IP (GW $localAddr) and assigned to $interfaceName interface AT: $systemdate $systemtime";
 
 :foreach i in [:ppp secret find comment="ALLACCESS"] do={
-    :set ACCESSUSER [:ppp secret get number=$i name]
-    :log debug "Accessuser $ACCESSUSER"
+    :set ACCESSUSER [/ppp secret get number=$i name];
+    :log debug "Accessuser $ACCESSUSER";
     :if ($user = $ACCESSUSER) do={
-    :set $ACCESS "true"
+    :set $ACCESS "true";
     }
 }
-:log info "user = $user and ACCESSUSER = $ACCESSUSER"
+:log info "user = $user and ACCESSUSER = $ACCESSUSER";
 :if ($ACCESS = true) do={
-    :log info "ALL ACCESS Add"
-    :ip firewall filter add action=accept chain=forward comment="DynamicAllowPingForBleuet-$user" protocol=icmp src-address=$remoteAddr place-before=0
-    :ip firewall filter add action=accept chain=forward comment="DynamicVPNITallAccess-$user" src-address=$remoteAddr place-before=0
+    :log info "ALL ACCESS Add";
+    /ip firewall filter add action=accept chain=forward comment="DynamicAllowPingForBleuet-$user" protocol=icmp src-address=$remoteAddr place-before=0;
+    /ip firewall filter add action=accept chain=forward comment="DynamicVPNITallAccess-$user" src-address=$remoteAddr place-before=0;
     } else={
-        :log info "DoNotACCESS Add"
-        :ip firewall filter add action=accept chain=forward comment="DynamicAllowPingForBleuet-$user" protocol=icmp src-address=$remoteAddr place-before=0
-        :ip firewall filter add action=accept chain=forward comment="DynamicAllowDNSForBleuet-$user" protocol=tcp dst-port=53 src-address=$remoteAddr place-before=0
-        :ip firewall filter add action=accept chain=forward comment="DynamicAllowDNSForBleuet-$user" protocol=udp dst-port=53 src-address=$remoteAddr place-before=0
-        :ip firewall filter add action=accept chain=forward comment="DynamicAllowOnlyRDP-$user" protocol=tcp dst-port=3389 src-address=$remoteAddr place-before=0
-        :ip firewall filter add action=accept chain=forward comment="DynamicAllowOnlyUDPRDP-$user" protocol=udp dst-port=3389 src-address=$remoteAddr place-before=0
+        :log info "DoNotACCESS Add";
+        /ip firewall filter add action=accept chain=forward comment="DynamicAllowPingForBleuet-$user" protocol=icmp src-address=$remoteAddr place-before=0;
+        /ip firewall filter add action=accept chain=forward comment="DynamicAllowDNSForBleuet-$user" protocol=tcp dst-port=53 src-address=$remoteAddr place-before=0;
+        /ip firewall filter add action=accept chain=forward comment="DynamicAllowDNSForBleuet-$user" protocol=udp dst-port=53 src-address=$remoteAddr place-before=0;
+        /ip firewall filter add action=accept chain=forward comment="DynamicAllowOnlyRDP-$user" protocol=tcp dst-port=3389 src-address=$remoteAddr place-before=0;
+        /ip firewall filter add action=accept chain=forward comment="DynamicAllowOnlyUDPRDP-$user" protocol=udp dst-port=3389 src-address=$remoteAddr place-before=0;
         }
 
 ########### ON-DOWN script #########
@@ -51,18 +51,18 @@
 :local callerId
 :local calledId
 :local interfaceName
-:local systemtime [:system clock get time]
-:local systemdate [:system clock get date]
+:local systemtime [/system clock get time];
+:local systemdate [/system clock get date];
 
-:set localAddr $"local-address"
-:set remoteAddr $"remote-address"
-:set callerId $"caller-id"
-:set calledId $"called-id"
-:set interfaceName [:interface get $interface name]
+:set localAddr $"local-address";
+:set remoteAddr $"remote-address";
+:set callerId $"caller-id";
+:set calledId $"called-id";
+:set interfaceName [/interface get $interface name];
 
-:log info "$user (srcIp=$callerId, dstIp=$calledId) Disconnected: was given $remoteAddr IP (GW $localAddr) and assigned to $interfaceName interface AT: $systemdate $systemtime"
+:log info "$user (srcIp=$callerId, dstIp=$calledId) Disconnected: was given $remoteAddr IP (GW $localAddr) and assigned to $interfaceName interface AT: $systemdate $systemtime";
 
-:log info "ACCESS Delete"
+:log info "ACCESS Delete";
 
-:ip firewall filter remove [:ip firewall filter find src-address=$remoteAddr]
+/ip firewall filter remove [/ip firewall filter find src-address=$remoteAddr];
 
